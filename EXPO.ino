@@ -4,6 +4,8 @@
 #define ONLEDS 16
 #define INIT_PIN 0
 
+#include <Wire.h>
+
 typedef struct {
     uint16_t pinNum;
     bool pinUSE = false;
@@ -13,33 +15,43 @@ typedef struct {
     
 } pinLevels;
 
-int REG[] = {0xFFFE,0x00,0x00};
-
 pinLevels digitPins[ONLEDS];
 
 void setup() {
   Serial.begin(115200);
   digitPins_setOut(0xFFFF);
+  Wire.begin(8);                // join i2c bus with address #8
+  Wire.onReceive(receiveEvent); // register event
 }
 
 void loop() {
-  int pins;
-  int second;
-  String cadena;
-  if (Serial.available()){
-    cadena = Serial.readString();
-    pins = (int) (cadena[0] - '0');
-    second = (bool) (cadena[1] - '0');
-    Serial.println("Primer bool");
-    Serial.println(second);
-    if(second)
-      digitPins_digitWrite(pins,255);
-    else
-      digitPins_digitWrite(pins,0);
-  }
-  delay(300);  
-  refresh();
+  delay(100);
 }
+
+void receiveEvent(int howMany){
+  char operation;
+  int pins;
+  bool state;
+  int level;
+  
+   if (Wire.available() == 4) { // loop through all but the last
+   operation = Wire.read(); // receive byte as a character
+   pins = Wire.read();
+   state = Wire.read();
+   level = Wire.read();
+  
+   switch(operation){
+      case 'a':
+        digitPins_setState(pins,state);
+        break;
+      case 'b':
+        digitPins_setLevel(pins,level);
+        break;
+      default:
+        break;
+    }
+   }  
+  }
 
 void digitPins_setOut(int onPins){
   char texto[50];
