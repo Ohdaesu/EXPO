@@ -2,6 +2,7 @@
 #define HIGH 255
 #define LOW 0
 #define ONLEDS 16
+#define INIT_PIN 0
 
 typedef struct {
     uint16_t pinNum;
@@ -22,19 +23,30 @@ void setup() {
 }
 
 void loop() {
-  //if (Serial.available()){
-  //  digitPins_setState(Serial.readString().toInt(),255);
-  //}
+  int pins;
+  int second;
+  String cadena;
+  if (Serial.available()){
+    cadena = Serial.readString();
+    pins = (int) (cadena[0] - '0');
+    second = (bool) (cadena[1] - '0');
+    Serial.println("Primer bool");
+    Serial.println(second);
+    if(second)
+      digitPins_digitWrite(pins,255);
+    else
+      digitPins_digitWrite(pins,0);
+  }
   delay(300);  
-  //refresh();
+  refresh();
 }
 
 void digitPins_setOut(int onPins){
   char texto[50];
   Serial.println("LEDS");
-  for (int i = 0 ;i<=ONLEDS;i++)
+  for (int i = 0 ;i<ONLEDS;i++)
   {
-      digitPins[i].pinNum = i+1;
+      digitPins[i].pinNum = i+INIT_PIN;
       if (onPins & (1<<i))
       {
          digitPins[i].level = LOW;
@@ -53,28 +65,47 @@ void digitPins_setOut(int onPins){
 }
 
 void digitPins_setState(int onPins,bool state){
-  for (int i = 0 ;i<=ONLEDS;i++)
+  Serial.println(state);
+  for (int i = 0 ;i<ONLEDS;i++)
   {
       if (onPins & (1<<i))
       {
          digitPins[i].pinON = state;
          digitPins[i].refresh = true;
+         if(state) {
+          digitPins[i].level = HIGH;
+         }else{
+          digitPins[i].level = LOW;
+          }
       }
   }
 }
 
-void digitPins_setLevel(int level){
-  for (int i = 0 ;i<=ONLEDS;i++)
+void digitPins_setLevel(int onPins,int level){
+  for (int i = 0 ;i<ONLEDS;i++)
   {
-      if (digitPins[i].pinON)
+      if (onPins & (1<<i) && digitPins[i].pinON)
       {
          digitPins[i].level = level;
+         digitPins[i].refresh = true;
       }
   }
 }
 
+void digitPins_digitWrite(int pin, int level){
+  if(digitPins[pin].pinUSE){
+    digitalWrite(digitPins[pin].pinNum,level);
+    digitPins[pin].level = level;
+    digitPins[pin].refresh = false;
+    if(level > 0)
+      digitPins[pin].pinON = true;
+    else
+      digitPins[pin].pinON = true;
+    }
+  }
+
 void refresh(){
-  for (int i = 0 ;i<=ONLEDS;i++)
+  for (int i = 0 ;i<ONLEDS;i++)
   {
       if (digitPins[i].pinUSE && digitPins[i].pinON && digitPins[i].refresh)
       { 
@@ -87,6 +118,8 @@ void refresh(){
       { 
          if (digitPins[i].pinUSE && digitPins[i].refresh)
          {
+            Serial.print("Se apaga el led ");
+            Serial.println(digitPins[i].pinNum);
             digitPins[i].refresh = false;
             digitalWrite(digitPins[i].pinNum,LOW);
          }
